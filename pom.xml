@@ -15,7 +15,7 @@
     <jdk.version>1.8</jdk.version>
     <proj.mainclass>org.ndsc.mnos.App</proj.mainclass>
     <netip.version>1.1.0-SNAPSHOT</netip.version>
-    <onos.version>1.11.0-SNAPSHOT</onos.version>
+    <onos.version>1.10.2</onos.version>
   </properties>
 
   <dependencies>
