@@ -46,7 +46,8 @@ public class FakeDeviceListener implements OpenFlowSwitchListener, OpenFlowMessa
     private FakeController shimController;
 
 
-    public FakeDeviceListener(OpenFlowController controller, FakeController shimController) {
+    public
+    (OpenFlowController controller, FakeController shimController) {
         this.controller = controller;
         this.shimController = shimController;
     }

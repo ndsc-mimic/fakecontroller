@@ -33,6 +33,10 @@
       <version>0.9.9.onos</version>
     </dependency>
 
+
+
+
+
     <dependency>
       <groupId>org.zeromq</groupId>
       <artifactId>jeromq</artifactId>
@@ -68,8 +72,9 @@
     <dependency>
       <groupId>io.netty</groupId>
       <artifactId>netty-all</artifactId>
-      <version>4.1.12.Final</version>
+      <version>4.1.6.Final</version>
     </dependency>
+
 
     <!-- https://mvnrepository.com/artifact/org.slf4j/slf4j-api -->
     <dependency>

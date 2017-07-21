@@ -80,6 +80,12 @@ public class MimicLayer {
     @Property(name = "ipv6Forwarding", boolValue = false, label = "Enable IPv6 forwarding; default is false")
     private boolean ipv6Forwarding = false;
 
+    public MimicLayer(ApplicationId appId,ZeroMQBaseConnector coreConnector,FakeDeviceListener ofDeviceListener){
+        this.appId=appId;
+        this.coreConnector=coreConnector;
+        this.ofDeviceListener=ofDeviceListener;
+    }
+
     @Activate
     public void activate(ComponentContext context) {
 

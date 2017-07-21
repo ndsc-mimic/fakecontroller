@@ -21,6 +21,7 @@ import eu.netide.lib.netip.OpenFlowMessage;
 import eu.netide.lib.netip.Protocol;
 import eu.netide.lib.netip.ProtocolVersions;
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.Channel;
 import org.javatuples.Pair;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBuffers;
@@ -48,12 +49,9 @@ import org.projectfloodlight.openflow.protocol.OFStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.slf4j.Logger;
+import  org.ndsc.mnos.adhesivePlaster;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import static org.slf4j.LoggerFactory.getLogger;
 
@@ -73,11 +71,15 @@ public class FakeController implements ICoreListener {
 
     private Map<Dpid,FakeSwitch> switchMap;
 
+    public static final ArrayList<adhesivePlaster> tapeConnectgroup = new ArrayList<adhesivePlaster>();
+
+
     public FakeController(ZeroMQBaseConnector connector, OpenFlowController controller) {
         coreConnector = connector;
         this.controller = controller;
         this.xids = Maps.newHashMap();
         this.switchMap = Maps.newHashMap();
+
     }
 
     public Pair<Protocol, ProtocolVersions> getSupportedProtocol() {
@@ -103,9 +105,9 @@ public class FakeController implements ICoreListener {
         //TODO: Handle messages that requires replies (e.g. barrier)
         Dpid dpid = new Dpid(datapathId);
         log.debug("Dpid {}", dpid);
-        OpenFlowSwitch sw = controller.getSwitch(dpid);
-
-        if (sw == null) {
+        adhesivePlaster tapeConnect=search(dpid);
+        //OpenFlowSwitch sw = controller.getSwitch(dpid);
+        if (tapeConnect == null) {
             log.error("Switch {} disconnected", dpid);
             return;
         }
@@ -119,11 +121,12 @@ public class FakeController implements ICoreListener {
                 case FLOW_MOD:
                     OFFlowMod flowMod = (OFFlowMod) message;
                     if (flowMod.getPriority() > ONOS_DEFAULT_PRIORITY) {
-                        sw.sendMsg(message);
+                        tapeConnect.tapeConnectedToTheBelow.write(message);
                     } else {
                         OFFlowMod.Builder flowModBuilder = flowMod.createBuilder();
                         flowModBuilder.setPriority(ONOS_DEFAULT_PRIORITY+1);
-                        sw.sendMsg(flowModBuilder.build());
+                        tapeConnect.tapeConnectedToTheBelow.write(flowModBuilder.build());
+                        //sw.sendMsg(flowModBuilder.build());
                     }
                     break;
 
@@ -132,21 +135,23 @@ public class FakeController implements ICoreListener {
                     switch (reply.getStatsType()) {
                         case DESC:
                             OFDescStatsRequest ofDescStatsRequest = (OFDescStatsRequest) reply;
-                            OFDescStatsReply.Builder ofDescReply = sw.factory().buildDescStatsReply();
+                            OFDescStatsReply.Builder ofDescReply = tapeConnect.tapeConnectedToTheTop.factory().buildDescStatsReply();
                             ofDescReply.setXid(ofDescStatsRequest.getXid());
-                            sendOpenFlowMessageToCore(ofDescReply.build(),ofDescReply.getXid(),sw.getId(),moduleId);
+                            sendOpenFlowMessageToCore(ofDescReply.build(),ofDescReply.getXid(),tapeConnect.tapeConnectedToTheTop.getId(),moduleId);
                             break;
                         default:
                             //Save the xid
                             xids.put(message.getXid(), moduleId);
-                            sw.sendMsg(message);
+                            tapeConnect.tapeConnectedToTheBelow.write(message);
+                            //sw.sendMsg(message);
                             break;
                     }
                     break;
 
                 case BARRIER_REQUEST:
                     xids.put(message.getXid(), moduleId);
-                    sw.sendMsg(message);
+                    tapeConnect.tapeConnectedToTheBelow.write(message);
+                    //sw.sendMsg(message);
                     break;
 
                 case ECHO_REQUEST:
@@ -155,43 +160,44 @@ public class FakeController implements ICoreListener {
                     ChannelBuffer buf = ChannelBuffers.dynamicBuffer();
                     echoRequest.writeTo(buf);
                     byte[] payload = buf.array();
-                    OFEchoReply.Builder echoReply = sw.factory().buildEchoReply();
+                    OFEchoReply.Builder echoReply = tapeConnect.tapeConnectedToTheTop.factory().buildEchoReply();
                     echoReply.setXid(echoRequest.getXid());
                     echoReply.setData(payload);
-                    sendOpenFlowMessageToCore(echoReply.build(),echoReply.getXid(),sw.getId(),moduleId);
+                    sendOpenFlowMessageToCore(echoReply.build(),echoReply.getXid(),tapeConnect.tapeConnectedToTheTop.getId(),moduleId);
                     break;
 
                 case FEATURES_REQUEST:
-                    OFFeaturesReply featuresReply = getFeatureReply(sw);
-                    sendOpenFlowMessageToCore(featuresReply,featuresReply.getXid(),sw.getId(),moduleId);
+                    OFFeaturesReply featuresReply = getFeatureReply(tapeConnect.tapeConnectedToTheTop);
+                    sendOpenFlowMessageToCore(featuresReply,featuresReply.getXid(),tapeConnect.tapeConnectedToTheTop.getId(),moduleId);
 
                     //Create OFPortDescStatsReply for OF_13
-                    if (sw.factory().getVersion() == OFVersion.OF_13) {
-                        OFPortDescStatsReply.Builder statsReplyBuilder = sw.factory().buildPortDescStatsReply();
-                        statsReplyBuilder.setEntries(sw.getPorts())
+                    if (tapeConnect.tapeConnectedToTheTop.factory().getVersion() == OFVersion.OF_13) {
+                        OFPortDescStatsReply.Builder statsReplyBuilder = tapeConnect.tapeConnectedToTheTop.factory().buildPortDescStatsReply();
+                        statsReplyBuilder.setEntries(tapeConnect.tapeConnectedToTheTop.getPorts())
                                 .setXid(0);
                         OFPortDescStatsReply ofPortStatsReply = statsReplyBuilder.build();
-                        sendOpenFlowMessageToCore(ofPortStatsReply,ofPortStatsReply.getXid(),sw.getId(),moduleId);
+                        sendOpenFlowMessageToCore(ofPortStatsReply,ofPortStatsReply.getXid(),tapeConnect.tapeConnectedToTheTop.getId(),moduleId);
                     }
                     break;
 
                 case PACKET_OUT:
-                    sw.sendMsg(message);
+                    tapeConnect.tapeConnectedToTheBelow.write(message);
+                    //sw.sendMsg(message);
                     break;
 
                 case GET_CONFIG_REQUEST:
                     OFGetConfigRequest setConfig = (OFGetConfigRequest) message;
-                    OFGetConfigReply.Builder configReply = sw.factory().buildGetConfigReply();
+                    OFGetConfigReply.Builder configReply = tapeConnect.tapeConnectedToTheTop.factory().buildGetConfigReply();
                     configReply.setXid(setConfig.getXid());
                     Set<OFConfigFlags> flags = Sets.newHashSet(OFConfigFlags.FRAG_NORMAL);
                     configReply.setFlags(flags);
                     configReply.setMissSendLen(0);
-                    sendOpenFlowMessageToCore(configReply.build(),configReply.getXid(),sw.getId(),moduleId);
+                    sendOpenFlowMessageToCore(configReply.build(),configReply.getXid(),tapeConnect.tapeConnectedToTheTop.getId(),moduleId);
                     break;
 
                 case SET_CONFIG:
                     OFSetConfig ofSetConfig = (OFSetConfig) message;
-                    OFGetConfigReply.Builder ofGetConfigReply = sw.factory().buildGetConfigReply();
+                    OFGetConfigReply.Builder ofGetConfigReply = tapeConnect.tapeConnectedToTheTop.factory().buildGetConfigReply();
                     ofGetConfigReply.setXid(ofSetConfig.getXid());
                     Set<OFConfigFlags> flagsSet = Sets.newHashSet(OFConfigFlags.FRAG_NORMAL);
                     ofGetConfigReply.setFlags(flagsSet);
@@ -294,6 +300,14 @@ public class FakeController implements ICoreListener {
 
         return fea.build();
     }
-
+    public adhesivePlaster search (Dpid dpid) {
+        adhesivePlaster aa=tapeConnectgroup.get(0);
+        for (adhesivePlaster ad : tapeConnectgroup) {
+            if (ad.dpid == dpid) {
+                return ad;
+            }
+        }
+        return aa;
+    }
 }
 
